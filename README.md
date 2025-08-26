@@ -1,74 +1,145 @@
-# PowerShell-GAS Real People Chat System
+# PowerShell Chat System
 
-This project implements a **real-time chat system** where multiple PowerShell clients can communicate with each other through a Google Apps Script server. Real people can register with unique usernames, send messages, and see chat history with other users.
+A **real-time private messaging chat system** built with PowerShell and Google Apps Script. Users can install with a single command and start chatting immediately with other users through private messages.
 
-## 🚀 New Features
+## 🚀 Quick Start (One Command Install)
 
-- **Real User Registration**: Dynamic user registration with unique usernames
-- **Persistent Message Storage**: Messages are stored and can be retrieved
-- **Multi-User Support**: Multiple people can chat simultaneously
-- **Real-Time Chat History**: View recent messages and see what others are saying
-- **User Management**: See who's registered and when they joined
-- **Interactive Commands**: Built-in commands for enhanced chat experience
+### **Install & Start Chatting Immediately:**
+```powershell
+iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -AutoStart
+```
 
-## 🌟 How It Works
+### **Install Only (Start Later):**
+```powershell
+iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1")
+```
 
-1. **User Registration**: Each person chooses a unique username when joining
-2. **Real-Time Messaging**: Send messages that are stored on the server
-3. **Message History**: See recent messages from all users
-4. **User Directory**: View all registered users
-5. **Persistent Storage**: All data is stored using Google Apps Script's PropertiesService
+### **Custom Installation Path:**
+```powershell
+iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -InstallPath "C:\MyChat" -AutoStart
+```
+
+## ✨ Features
+
+- **🔐 Private Messages Only**: Secure private messaging between users
+- **⚡ One-Command Install**: No setup required, works out of the box
+- **🌐 Cross-Platform**: Works on any Windows machine with PowerShell
+- **👥 Multi-User Support**: Multiple people can chat simultaneously  
+- **📱 Real-Time**: Live message updates and user presence
+- **🎨 Colorful Interface**: Clean, user-friendly chat experience
+- **☁️ Cloud-Based**: Messages stored securely in Google Apps Script
+
+## 🛠️ How It Works
+
+1. **Automatic Installation**: The installer downloads and sets up all required files
+2. **Server Connection**: Connects to a pre-configured Google Apps Script server
+3. **User Registration**: Each person chooses a unique username when joining
+4. **Private Messaging**: Send and receive private messages with other online users
+5. **Real-Time Updates**: Messages appear instantly with automatic refresh
 
 ## 📁 Project Structure
 
 ```
-powershell-gas-chat-system
-├── client
-│   ├── chat.ps1          # Enhanced PowerShell client with real user support
-│   ├── config.ps1        # Configuration settings for the PowerShell client
-│   └── utils
-│       └── http-helpers.ps1 # Utility functions for HTTP requests
-├── server
-│   ├── code.js           # Enhanced Google Apps Script with real user management
-│   ├── config.gs         # Configuration settings for the Google Apps Script server
-│   └── utils
-│       └── user-helpers.gs # Utility functions for managing user data
-├── docs
-│   └── setup-guide.md     # Step-by-step setup guide
-├── start-chat.bat         # Windows batch file to easily start the chat
-├── start-chat.ps1         # PowerShell script to start the chat
-└── README.md              # Project overview and usage instructions
+powershell-gas-chat-system/
+├── install-chat.ps1          # One-command installer script
+├── README.md                 # This documentation
+└── server/                   # Google Apps Script server code
+    ├── code.js              # Main server logic with full API
+    ├── config.gs            # Server configuration
+    └── utils/               # Server utilities
+        └── user-helpers.gs  # User management functions
 ```
 
-## 🎯 Quick Start
+## 💬 Chat Features
 
-1. **Deploy the Server**: Copy `server/code.js` to Google Apps Script and deploy as a web app
-2. **Configure Client**: Update `client/config.ps1` with your Google Apps Script URL
-3. **Run Chat**: Double-click `start-chat.bat` or run `.\start-chat.ps1`
+Once installed and running, users can:
 
-## 💬 Chat Commands
+- **Send Private Messages**: Type and send messages to selected users
+- **Select Recipients**: Choose from a list of online users to chat with
+- **Switch Conversations**: Change who you're chatting with using `switch` command
+- **View Online Users**: See who's available to chat with using `users` command
+- **Real-Time Updates**: Messages appear automatically as they're sent
 
-Once in the chat, you can use these commands:
+### **Chat Commands:**
+- Type your message and press Enter to send
+- `users` - Show online users list
+- `switch` - Change chat recipient  
+- `exit` or `quit` - Leave the chat
 
-- `/recent [count]` - Show recent messages (default: 5, max: 20)
-- `/users` - Show all registered users and when they joined
-- `/help` - Display available commands
-- `/quit` - Exit the chat
-- Just type normally to send messages!
+## 🔧 Advanced Usage
 
-## 🔧 Usage
+### **For Developers - Custom Server:**
+If you want to use your own Google Apps Script server:
 
-1. **Setup the Google Apps Script Server:**
-   - Open the `server/code.gs` file and configure any necessary settings in `server/config.gs`.
-   - Deploy the Google Apps Script as a web app to receive requests from the PowerShell client.
+```powershell
+iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -ServerUrl "YOUR_GAS_URL" -AutoStart
+```
 
-2. **Configure the PowerShell Client:**
-   - Open the `client/config.ps1` file and set the server URL and any authentication details required to connect to the Google Apps Script server.
+### **Installation Options:**
+- `-InstallPath` - Custom installation directory
+- `-ServerUrl` - Use your own Google Apps Script server
+- `-AutoStart` - Launch chat immediately after installation
+- `-Silent` - Install without prompts (for automation)
 
-3. **Run the PowerShell Client:**
-   - Execute the `client/chat.ps1` script to start the chat interface.
-   - Follow the prompts to send messages and view the responses.
+## 🌐 Server API
 
-## Contributing
+The Google Apps Script server provides these endpoints:
 
-Feel free to contribute to this project by submitting issues or pull requests. Your feedback and improvements are welcome!
+### **PowerShell Client Endpoints:**
+- `GET /users` - Get list of online usernames
+- `POST /send` - Send private message `{from, to, message}`
+- `GET /messages?user=X&with=Y` - Get conversation between users
+- `GET /ping` - Test server connection
+
+### **Advanced API Endpoints:**
+- `POST /?action=register` - Register new user
+- `POST /?action=login` - User login
+- `POST /?action=sendPrivateMessage` - Send private message
+- `POST /?action=getMessages` - Get user's messages
+- `POST /?action=getUsers` - Get full user objects
+
+## 📋 Requirements
+
+- **Windows** with PowerShell 5.1+ (built into Windows 10/11)
+- **Internet connection** for installation and messaging
+- **No additional software** required
+
+## 🔒 Privacy & Security
+
+- **Private Messages Only**: No public chat rooms, only private conversations
+- **Secure Storage**: Messages stored in Google Apps Script's secure environment
+- **No Personal Data**: Only usernames are stored, no personal information required
+- **Temporary Storage**: Messages are automatically cleaned up (100 message limit)
+
+## 🎯 Use Cases
+
+Perfect for:
+- **Team Communication**: Quick private messages between team members
+- **Remote Work**: Instant messaging for distributed teams
+- **Gaming Groups**: Coordinate with friends during gaming sessions
+- **Study Groups**: Private messaging for students and study partners
+- **Small Organizations**: Internal communication tool
+
+## 🤝 Contributing
+
+This is an open-source project. Feel free to:
+- Report issues or bugs
+- Suggest new features
+- Submit pull requests
+- Fork for your own modifications
+
+## 📞 Support
+
+If you encounter any issues:
+1. Check that PowerShell execution policy allows scripts
+2. Ensure you have an internet connection
+3. Try running PowerShell as Administrator
+4. Check the installation path for any permission issues
+
+## 📄 License
+
+This project is open source. Use, modify, and distribute freely.
+
+---
+
+**Ready to start chatting? Run the one-command installer and start messaging instantly! 🚀**
