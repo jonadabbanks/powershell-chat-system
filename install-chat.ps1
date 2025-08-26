@@ -1,7 +1,8 @@
 param(
     [string]$InstallPath = "$env:USERPROFILE\PowerShellChat",
     [string]$ServerUrl = "",
-    [switch]$Silent
+    [switch]$Silent,
+    [switch]$AutoStart
 )
 
 function Write-ColoredOutput {
@@ -220,7 +221,7 @@ function Show-Messages {
                 Write-Host "[$timestamp] You: " -ForegroundColor Green -NoNewline
                 Write-Host $message -ForegroundColor White
             } else {
-                Write-Host "[$timestamp] $from: " -ForegroundColor Blue -NoNewline
+                Write-Host "[$timestamp] ${from}: " -ForegroundColor Blue -NoNewline
                 Write-Host $message -ForegroundColor White
             }
         }
@@ -308,27 +309,20 @@ while ($true) {
     # Create config.ps1
     Write-ColoredOutput "Creating configuration file..." Yellow
     
-    $configContent = @'
-# PowerShell Chat System Configuration
-
-# Server Configuration
-# Replace with your Google Apps Script Web App URL
-$global:serverUrl = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
-
-# Chat Configuration
-$global:maxRetries = 3
-$global:retryDelay = 2
-
-# Display Configuration
-$global:refreshInterval = 3
-$global:maxMessageLength = 500
-
-Write-Host "Configuration loaded" -ForegroundColor Green
-Write-Host "Server URL: $serverUrl" -ForegroundColor Gray
-'@
+    # Use provided ServerUrl or your default server
+    $configServerUrl = if ($ServerUrl) { $ServerUrl } else { "https://script.google.com/macros/s/AKfycbytNa-9WrkWGbCGHpmBIhnlOQMrj-3QpCcF-iWqYxgFYpOZg1LKIS2pSQsjZY815H0W/exec" }
+    
+    # Use the same format as the working client config
+    $configContent = "# PowerShell Chat System Configuration`n"
+    $configContent += "`$serverUrl = `"$configServerUrl`"`n"
+    $configContent += "`$apiKey = `"`"`n`n"
+    $configContent += "`$global:config = @{`n"
+    $configContent += "    ServerUrl = `$serverUrl`n"
+    $configContent += "    ApiKey = `$apiKey`n"
+    $configContent += "}"
     
     try {
-        $configContent | Out-File -FilePath "$InstallPath\config.ps1" -Encoding UTF8
+        [System.IO.File]::WriteAllText("$InstallPath\config.ps1", $configContent, [System.Text.Encoding]::UTF8)
         Write-ColoredOutput "Configuration file created successfully!" Green
     } catch {
         Write-ColoredOutput "Failed to create configuration file: $($_.Exception.Message)" Red
@@ -397,8 +391,22 @@ Write-Host "HTTP helpers loaded" -ForegroundColor Green
     
     $launcherContent = @"
 # PowerShell Chat System Launcher
-Set-Location "$InstallPath"
-.\chat.ps1
+Write-Host "Starting PowerShell Chat System..." -ForegroundColor Cyan
+Write-Host ""
+
+try {
+    Set-Location "$InstallPath"
+    if (Test-Path ".\chat.ps1") {
+        .\chat.ps1
+    } else {
+        Write-Host "Error: chat.ps1 not found in installation directory!" -ForegroundColor Red
+        Write-Host "Current location: $(Get-Location)" -ForegroundColor Yellow
+        Read-Host "Press Enter to exit"
+    }
+} catch {
+    Write-Host "Error launching chat system: $($_.Exception.Message)" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+}
 "@
     
     try {
@@ -418,11 +426,28 @@ Set-Location "$InstallPath"
     Write-ColoredOutput "- Configuration: config.ps1" Gray
     Write-ColoredOutput "- Launcher: Start-Chat.ps1" Gray
     Write-ColoredOutput ""
-    Write-ColoredOutput "Next Steps:" Yellow
-    Write-ColoredOutput "1. Edit config.ps1 to set your server URL" Gray
-    Write-ColoredOutput "2. Run Start-Chat.ps1 to begin chatting" Gray
+    if ($ServerUrl) {
+        Write-ColoredOutput "Server URL: $ServerUrl" Green
+    } else {
+        Write-ColoredOutput "Server URL: Using default server (jonadabbanks)" Green
+    }
     Write-ColoredOutput ""
-    Write-ColoredOutput "Ready to use once you configure your server URL." Gray
+    Write-ColoredOutput "How to Start Chatting:" Yellow
+    Write-ColoredOutput "1. Navigate to: $InstallPath" Gray
+    Write-ColoredOutput "2. Double-click 'Start-Chat.ps1' OR run it from PowerShell" Gray
+    Write-ColoredOutput "3. Alternative: Run .\chat.ps1 from the installation folder" Gray
+    Write-ColoredOutput ""
+    Write-ColoredOutput "Quick Start Command:" Cyan
+    Write-ColoredOutput "& `"$InstallPath\Start-Chat.ps1`"" Green
+    Write-ColoredOutput ""
+    if (-not $AutoStart) {
+        Write-ColoredOutput "Pro Tip: Use -AutoStart parameter to launch chat immediately after install!" Magenta
+        Write-ColoredOutput ""
+    }
+    if (-not $ServerUrl) {
+        Write-ColoredOutput "Ready to chat! Default server configured." Green
+        Write-ColoredOutput "To use your own server, specify -ServerUrl parameter during installation" Gray
+    }
     
     return $true
 }
@@ -433,10 +458,36 @@ try {
     if ($success) {
         Write-ColoredOutput ""
         Write-ColoredOutput "Installation completed successfully!" Green
+        
+        if ($AutoStart) {
+            Write-ColoredOutput ""
+            Write-ColoredOutput "Auto-starting chat system..." Cyan
+            Write-ColoredOutput "Press Ctrl+C to stop the chat and return to PowerShell" Yellow
+            Write-ColoredOutput ""
+            Start-Sleep -Seconds 2
+            
+            try {
+                Set-Location $InstallPath
+                & ".\chat.ps1"
+            } catch {
+                Write-ColoredOutput "Error starting chat: $($_.Exception.Message)" Red
+                if (-not $Silent) {
+                    Read-Host "Press Enter to exit"
+                }
+            }
+        } else {
+            if (-not $Silent) {
+                Write-ColoredOutput ""
+                Read-Host "Press Enter to exit"
+            }
+        }
         exit 0
     } else {
         Write-ColoredOutput ""
         Write-ColoredOutput "Installation failed. Please check the error messages above." Red
+        if (-not $Silent) {
+            Read-Host "Press Enter to exit"
+        }
         exit 1
     }
 } catch {
