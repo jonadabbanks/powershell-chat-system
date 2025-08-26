@@ -6,7 +6,7 @@ A **real-time private messaging chat system** built with PowerShell and Google A
 
 ### **Install & Start Chatting Immediately:**
 ```powershell
-iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -AutoStart
+iex "& { $(irm 'https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1') } -AutoStart"
 ```
 
 ### **Install Only (Start Later):**
@@ -16,7 +16,7 @@ iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/
 
 ### **Custom Installation Path:**
 ```powershell
-iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -InstallPath "C:\MyChat" -AutoStart
+iex "& { $(irm 'https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1') } -InstallPath 'C:\MyChat' -AutoStart"
 ```
 
 ## ✨ Features
@@ -72,7 +72,7 @@ Once installed and running, users can:
 If you want to use your own Google Apps Script server:
 
 ```powershell
-iex (irm "https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1") -ServerUrl "YOUR_GAS_URL" -AutoStart
+iex "& { $(irm 'https://raw.githubusercontent.com/jonadabbanks/powershell-chat-system/main/install-chat.ps1') } -ServerUrl 'YOUR_GAS_URL' -AutoStart"
 ```
 
 ### **Installation Options:**

@@ -119,9 +119,146 @@ function Get-Username {
     return $user.Trim()
 }
 
+function Get-SecurePassword {
+    param([string]$Prompt = "Enter password")
+    
+    $securePassword = Read-Host -Prompt $Prompt -AsSecureString
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+    $password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    
+    return $password
+}
+
+function Register-User {
+    param([string]$Username)
+    
+    Write-Host "Registering new user: $Username" -ForegroundColor Yellow
+    $password = Get-SecurePassword -Prompt "Create a password for your account"
+    
+    if ($password.Trim() -eq "") {
+        Write-Host "Password cannot be empty!" -ForegroundColor Red
+        return $null
+    }
+    
+    try {
+        $body = @{
+            action = "register"
+            username = $Username
+            password = $password
+        } | ConvertTo-Json
+        
+        $response = Invoke-RestMethod -Uri $global:config.ServerUrl -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+        
+        if ($response.success) {
+            Write-Host "Registration successful!" -ForegroundColor Green
+            return @{
+                username = $response.username
+                userId = $response.userId
+            }
+        } else {
+            if ($response.requiresLogin) {
+                Write-Host "Username already exists. Please login." -ForegroundColor Yellow
+                return Login-User -Username $Username
+            } else {
+                Write-Host "Registration failed: $($response.error)" -ForegroundColor Red
+                return $null
+            }
+        }
+    } catch {
+        Write-Host "Error during registration: $($_.Exception.Message)" -ForegroundColor Red
+        return $null
+    }
+}
+
+function Login-User {
+    param([string]$Username)
+    
+    Write-Host "Logging in user: $Username" -ForegroundColor Yellow
+    
+    # First, try to login without password (for new usernames or to check account status)
+    try {
+        $body = @{
+            action = "login"
+            username = $Username
+        } | ConvertTo-Json
+        
+        $response = Invoke-RestMethod -Uri $global:config.ServerUrl -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+        
+        if ($response.success) {
+            Write-Host "Login successful!" -ForegroundColor Green
+            return @{
+                username = $response.username
+                userId = $response.userId
+            }
+        } else {
+            if ($response.canRegister) {
+                Write-Host "Username not found. Let's register you." -ForegroundColor Cyan
+                return Register-User -Username $Username
+            } elseif ($response.needsPasswordSetup) {
+                Write-Host "Your account needs a password for security." -ForegroundColor Yellow
+                $password = Get-SecurePassword -Prompt "Set a password for your account"
+                
+                if ($password.Trim() -eq "") {
+                    Write-Host "Password cannot be empty!" -ForegroundColor Red
+                    return $null
+                }
+                
+                # Set password for legacy user
+                $bodyWithPassword = @{
+                    action = "login"
+                    username = $Username
+                    password = $password
+                } | ConvertTo-Json
+                
+                $passwordResponse = Invoke-RestMethod -Uri $global:config.ServerUrl -Method POST -Body $bodyWithPassword -ContentType "application/json" -UseBasicParsing
+                
+                if ($passwordResponse.success) {
+                    Write-Host "Password set successfully! You are now logged in." -ForegroundColor Green
+                    return @{
+                        username = $passwordResponse.username
+                        userId = $passwordResponse.userId
+                    }
+                } else {
+                    Write-Host "Failed to set password: $($passwordResponse.error)" -ForegroundColor Red
+                    return $null
+                }
+            } elseif ($response.requiresPassword) {
+                Write-Host "Password required for this account." -ForegroundColor Yellow
+                $password = Get-SecurePassword -Prompt "Enter your password"
+                
+                $bodyWithPassword = @{
+                    action = "login"
+                    username = $Username
+                    password = $password
+                } | ConvertTo-Json
+                
+                $passwordResponse = Invoke-RestMethod -Uri $global:config.ServerUrl -Method POST -Body $bodyWithPassword -ContentType "application/json" -UseBasicParsing
+                
+                if ($passwordResponse.success) {
+                    Write-Host "Login successful!" -ForegroundColor Green
+                    return @{
+                        username = $passwordResponse.username
+                        userId = $passwordResponse.userId
+                    }
+                } else {
+                    Write-Host "Login failed: $($passwordResponse.error)" -ForegroundColor Red
+                    return $null
+                }
+            } else {
+                Write-Host "Login failed: $($response.error)" -ForegroundColor Red
+                return $null
+            }
+        }
+    } catch {
+        Write-Host "Error during login: $($_.Exception.Message)" -ForegroundColor Red
+        return $null
+    }
+}
+
 function Get-OnlineUsers {
     try {
-        $response = Invoke-RestMethod -Uri "$serverUrl/users" -Method GET -UseBasicParsing
+        $response = Invoke-RestMethod -Uri "$($global:config.ServerUrl)/users" -Method GET -UseBasicParsing
         if ($response.status -eq "success") {
             return $response.users
         }
@@ -176,7 +313,7 @@ function Send-PrivateMessage {
             message = $Message
         } | ConvertTo-Json
         
-        $response = Invoke-RestMethod -Uri "$serverUrl/send" -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+        $response = Invoke-RestMethod -Uri "$($global:config.ServerUrl)/send" -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
         return $response.status -eq "success"
     } catch {
         Write-Host "Error sending message: $($_.Exception.Message)" -ForegroundColor Red
@@ -188,7 +325,9 @@ function Get-PrivateMessages {
     param([string]$With)
     
     try {
-        $url = "$serverUrl/messages?user=$([System.Web.HttpUtility]::UrlEncode($currentUser))&with=$([System.Web.HttpUtility]::UrlEncode($With))"
+        $encodedUser = [System.Web.HttpUtility]::UrlEncode($currentUser)
+        $encodedWith = [System.Web.HttpUtility]::UrlEncode($With)
+        $url = "$($global:config.ServerUrl)/messages?user=$encodedUser&with=$encodedWith"
         $response = Invoke-RestMethod -Uri $url -Method GET -UseBasicParsing
         
         if ($response.status -eq "success") {
@@ -238,12 +377,27 @@ Show-WelcomeBanner
 
 if (-not (Test-ServerConnection)) {
     Write-Host "Cannot connect to chat server. Please check your configuration." -ForegroundColor Red
-    Write-Host "Server URL: $serverUrl" -ForegroundColor Gray
+    Write-Host "Server URL: $($global:config.ServerUrl)" -ForegroundColor Gray
     exit 1
 }
 
-$currentUser = Get-Username
-Write-Host "Welcome, $currentUser!" -ForegroundColor Green
+$currentUsername = Get-Username
+Write-Host "Welcome, $currentUsername!" -ForegroundColor Green
+
+# Authenticate user (register or login)
+Write-Host ""
+Write-Host "Authenticating..." -ForegroundColor Cyan
+$userInfo = Login-User -Username $currentUsername
+
+if (-not $userInfo) {
+    Write-Host "Authentication failed. Please try again later." -ForegroundColor Red
+    exit 1
+}
+
+$currentUser = $userInfo.username
+$currentUserId = $userInfo.userId
+
+Write-Host "Authentication successful!" -ForegroundColor Green
 
 # Select initial recipient
 $recipient = Select-Recipient
