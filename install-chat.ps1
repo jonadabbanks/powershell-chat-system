@@ -273,34 +273,68 @@ function Select-Recipient {
     Write-Host "Getting online users..." -ForegroundColor Yellow
     
     $users = Get-OnlineUsers
-    if ($users.Count -eq 0) {
-        Write-Host "No other users online currently." -ForegroundColor Red
-        return $null
-    }
-    
-    $otherUsers = $users | Where-Object { $_ -ne $currentUser }
-    if ($otherUsers.Count -eq 0) {
-        Write-Host "No other users online currently." -ForegroundColor Red
-        return $null
+    $otherUsers = @()
+    if ($users.Count -gt 0) {
+        $otherUsers = $users | Where-Object { $_ -ne $currentUser }
     }
     
     Write-Host ""
-    Write-Host "Online Users:" -ForegroundColor Green
-    for ($i = 0; $i -lt $otherUsers.Count; $i++) {
-        Write-Host "  $($i + 1). $($otherUsers[$i])" -ForegroundColor White
-    }
-    
-    Write-Host ""
-    do {
-        $selection = Read-Host "Select user number (1-$($otherUsers.Count))"
-        if ($selection -match '^\d+$') {
-            $index = [int]$selection - 1
-            if ($index -ge 0 -and $index -lt $otherUsers.Count) {
-                return $otherUsers[$index]
-            }
+    if ($otherUsers.Count -gt 0) {
+        Write-Host "Online Users:" -ForegroundColor Green
+        for ($i = 0; $i -lt $otherUsers.Count; $i++) {
+            Write-Host "  $($i + 1). $($otherUsers[$i])" -ForegroundColor White
         }
-        Write-Host "Invalid selection. Please enter a number between 1 and $($otherUsers.Count)" -ForegroundColor Red
-    } while ($true)
+        Write-Host ""
+        Write-Host "Or enter any username to send messages to offline users" -ForegroundColor Yellow
+        Write-Host ""
+        
+        do {
+            $selection = Read-Host "Select user number (1-$($otherUsers.Count)) or enter username"
+            
+            # Check if it's a number selection
+            if ($selection -match '^\d+$') {
+                $index = [int]$selection - 1
+                if ($index -ge 0 -and $index -lt $otherUsers.Count) {
+                    return $otherUsers[$index]
+                }
+                Write-Host "Invalid selection. Please enter a number between 1 and $($otherUsers.Count) or a username" -ForegroundColor Red
+            }
+            # Check if it's a username
+            elseif ($selection.Trim() -ne "" -and $selection -ne $currentUser) {
+                Write-Host "Starting chat with '$selection' (may be offline)" -ForegroundColor Yellow
+                return $selection.Trim()
+            }
+            # Invalid input
+            else {
+                if ($selection -eq $currentUser) {
+                    Write-Host "You cannot send messages to yourself" -ForegroundColor Red
+                } else {
+                    Write-Host "Please enter a valid selection or username" -ForegroundColor Red
+                }
+            }
+        } while ($true)
+    }
+    else {
+        Write-Host "No other users online currently." -ForegroundColor Yellow
+        Write-Host "But you can still send messages to any user by entering their username!" -ForegroundColor Green
+        Write-Host ""
+        
+        do {
+            $username = Read-Host "Enter username to chat with (or 'exit' to quit)"
+            if ($username.ToLower() -eq "exit") {
+                return $null
+            }
+            if ($username.Trim() -ne "" -and $username -ne $currentUser) {
+                Write-Host "Starting chat with '$username' (may be offline)" -ForegroundColor Yellow
+                return $username.Trim()
+            }
+            if ($username -eq $currentUser) {
+                Write-Host "You cannot send messages to yourself" -ForegroundColor Red
+            } else {
+                Write-Host "Please enter a valid username" -ForegroundColor Red
+            }
+        } while ($true)
+    }
 }
 
 function Send-PrivateMessage {
